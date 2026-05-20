@@ -1,0 +1,33 @@
+{
+  "name": "jarvis-claude",
+  "version": "1.0.0",
+  "description": "高性能低开销项目生成与管理中枢 — Claude Code Skill。子Agent上下文隔离，三层记忆体系，用于创建其它工具的工具。",
+  "main": "install.js",
+  "bin": {
+    "jarvis-claude": "./install.js",
+    "jarvis": "./install.js"
+  },
+  "files": [
+    "install.js",
+    "SKILL.md",
+    "templates/"
+  ],
+  "keywords": [
+    "claude-code",
+    "skill",
+    "project-management",
+    "agent",
+    "ai",
+    "jarvis",
+    "工具生成器",
+    "项目管理"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aimtowin/Jarvis-super"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

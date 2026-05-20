@@ -1,0 +1,55 @@
+{
+  "version": "1.0",
+  "agents": [
+    {
+      "name": "project-manager",
+      "role": "项目经理/需求翻译官",
+      "created": "auto",
+      "description": "与用户对话精化需求，输出规范的需求文档，不写代码",
+      "status": "active"
+    },
+    {
+      "name": "architect",
+      "role": "系统架构师",
+      "created": "auto",
+      "description": "技术架构设计、技术选型评估、系统级方案设计、重构路径规划",
+      "status": "active"
+    },
+    {
+      "name": "backend-builder",
+      "role": "后端构建师",
+      "created": "auto",
+      "description": "构建后端服务，API开发，数据处理，文件操作",
+      "status": "active"
+    },
+    {
+      "name": "database-administrator",
+      "role": "数据库管理员",
+      "created": "auto",
+      "description": "数据模型设计、存储方案选型、查询优化、数据迁移",
+      "status": "active"
+    },
+    {
+      "name": "frontend-builder",
+      "role": "前端页面构建师",
+      "created": "auto",
+      "description": "创建HTML/CSS/JS/React页面，专注视觉效果和动画实现",
+      "status": "active"
+    },
+    {
+      "name": "security-administrator",
+      "role": "安全管理员",
+      "created": "auto",
+      "description": "安全审计、认证授权方案、漏洞防范、依赖安全检查",
+      "status": "active"
+    },
+    {
+      "name": "evaluator",
+      "role": "验收工程师",
+      "created": "auto",
+      "description": "功能验收、Bug检测、代码审查、质量把关",
+      "status": "active"
+    }
+  ],
+  "last_updated": "auto"
+}
