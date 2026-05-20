@@ -68,7 +68,7 @@ project-manager → architect → backend-builder → database-administrator →
 npx jarvis-claude
 
 # 或从 GitHub 安装
-npx github:YOUR_USERNAME/jarvis-claude
+npx github:aimtowin/Jarvis-super
 ```
 
 安装脚本自动完成：
