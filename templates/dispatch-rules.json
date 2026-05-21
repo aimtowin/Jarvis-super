@@ -1,70 +1,154 @@
 {
-  "version": "1.0",
-  "description": "Agent 调度规则引擎 — 任务→Agent链映射。超脑每次派发前必读。",
+  "version": "1.1",
+  "description": "Agent 调度规则引擎 — 任务→Agent链映射、能力矩阵、决策树、冲突解决。超脑每次派发前必读。",
 
   "agents": {
     "project-manager": {
       "role": "需求翻译官",
-      "capability_tags": ["requirements", "specification", "scope-definition"],
-      "triggers": ["需求描述少于2句话", "用户说随便/看着办/你决定", "技术栈未确定", "功能边界模糊"],
+      "capability_tags": ["requirements", "specification", "user-stories", "scope-definition"],
+      "triggers": [
+        "需求描述少于2句话",
+        "用户说'随便''看着办''你决定'",
+        "技术栈未确定",
+        "功能边界模糊"
+      ],
+      "fuzzy_intent_triggers": [
+        "用户说'我不确定'/'可能'/'大概'/'或许'/'还没想好'",
+        "想法未形成具体方向",
+        "同时提到多个不相关的可能方向",
+        "用户主动问'你觉得呢''有什么建议''怎么做比较好'",
+        "需求自相矛盾或频繁改口"
+      ],
+      "pre_skill": {
+        "skill": "grill-me",
+        "condition": "fuzzy_intent_triggers 命中时，先运行 grill-me 深挖意图",
+        "output": ".grill/<slug>.md 作为 project-manager 的输入上下文",
+        "skip_if": "用户明确说'直接做' 或 需求已包含具体技术细节和功能列表"
+      },
       "exclusions": ["写代码", "修改文件（除requirement.md）", "架构设计", "UI实现"],
+      "priority": 1,
       "chain_position": "first",
       "optional": true,
-      "skip_when": "需求已有详细说明 或 用户明确说直接做"
+      "skip_when": "需求已有详细说明文档 或 用户明确说'直接做'"
     },
+
     "architect": {
       "role": "系统架构师",
-      "capability_tags": ["architecture", "system-design", "tech-selection", "refactoring-plan"],
-      "triggers": ["新项目且涉及3个以上模块", "需要技术选型", "大规模重构", "多服务协作"],
-      "exclusions": ["写业务代码", "UI实现", "需求分析"],
-      "chain_position": "after project-manager, before implementation",
+      "capability_tags": ["architecture", "system-design", "tech-selection", "module-structure", "refactoring-plan", "scalability"],
+      "triggers": [
+        "新项目且涉及3个以上模块",
+        "需要技术选型（框架/库/工具）",
+        "大规模重构",
+        "多服务/多项目协作"
+      ],
+      "exclusions": ["写业务代码", "UI实现", "需求分析（交给project-manager）"],
+      "priority": 2,
+      "chain_position": "after project-manager, before implementation agents",
       "optional": true,
       "skip_when": "单页面应用 或 纯CRUD 或 技术栈已确定"
     },
+
     "backend-builder": {
       "role": "后端构建师",
-      "capability_tags": ["nodejs", "api", "rest", "data-processing", "file-system"],
-      "triggers": ["API端点", "后端服务", "数据处理", "文件读写"],
-      "exclusions": ["前端页面", "CSS", "数据库schema设计", "安全方案设计"],
+      "capability_tags": ["nodejs", "express", "api", "rest", "ffmpeg", "video", "image-processing", "llm-integration", "file-system"],
+      "triggers": [
+        "API端点",
+        "后端服务",
+        "数据处理/转换",
+        "FFmpeg视频合成",
+        "图片/视频处理",
+        "LLM集成",
+        "文件读写"
+      ],
+      "exclusions": ["前端页面", "CSS", "数据库schema设计（交给DBA）", "安全方案设计（交给security）"],
+      "priority": 10,
       "chain_position": "after architect, before frontend-builder",
       "optional": false,
       "skip_when": "纯前端项目"
     },
-    "database-administrator": {
-      "role": "数据库管理员",
-      "capability_tags": ["sql", "nosql", "schema", "indexing", "migration", "data-modeling"],
-      "triggers": ["数据持久化", "表结构设计", "数据库选型", "查询性能"],
-      "exclusions": ["业务逻辑实现", "UI"],
-      "chain_position": "alongside backend-builder",
-      "optional": true,
-      "skip_when": "无数据存储需求 或 localStorage简单场景"
-    },
+
     "frontend-builder": {
       "role": "前端页面构建师",
-      "capability_tags": ["html", "css", "javascript", "animation", "responsive", "ui-component"],
-      "triggers": ["创建/修改页面", "UI组件", "样式/CSS", "动画效果", "响应式布局"],
-      "exclusions": ["后端逻辑", "API服务", "数据库", "认证系统设计"],
-      "chain_position": "after backend-builder",
+      "capability_tags": ["html", "css", "javascript", "canvas", "css-animation", "responsive", "ui-component", "browser-api", "dom"],
+      "triggers": [
+        "创建/修改页面",
+        "UI组件",
+        "样式/CSS",
+        "动画效果",
+        "响应式布局",
+        "浏览器交互",
+        "视觉效果"
+      ],
+      "exclusions": ["后端逻辑", "API服务", "数据库", "认证系统设计", "构建工具链（webpack/vite配置）"],
+      "priority": 10,
+      "chain_position": "after backend-builder, before reviewagent",
       "optional": false,
       "skip_when": "纯后端/CLI项目"
     },
+
+    "database-administrator": {
+      "role": "数据库管理员",
+      "capability_tags": ["sql", "nosql", "schema", "indexing", "migration", "data-modeling", "storage", "caching"],
+      "triggers": [
+        "数据持久化",
+        "表结构设计",
+        "数据库选型",
+        "查询慢/性能问题",
+        "数据迁移"
+      ],
+      "exclusions": ["业务逻辑实现", "UI", "安全审计"],
+      "priority": 8,
+      "chain_position": "after architect, alongside backend-builder",
+      "optional": true,
+      "skip_when": "无数据存储需求 或 使用第三方存储（如localStorage简单场景）"
+    },
+
     "security-administrator": {
       "role": "安全管理员",
-      "capability_tags": ["authentication", "authorization", "xss", "csrf", "encryption", "security-audit"],
-      "triggers": ["登录/注册", "API暴露到公网", "处理用户敏感数据", "上线前检查"],
-      "exclusions": ["修改业务代码", "渗透测试"],
+      "capability_tags": ["authentication", "authorization", "xss", "csrf", "sql-injection", "encryption", "secrets", "owasp", "security-audit"],
+      "triggers": [
+        "登录/注册功能",
+        "API暴露到公网",
+        "处理用户敏感数据",
+        "支付相关",
+        "上线前安全检查"
+      ],
+      "exclusions": ["修改业务代码（只输出方案）", "渗透测试"],
+      "priority": 5,
       "chain_position": "after implementation, before evaluator",
       "optional": true,
       "skip_when": "纯静态页面 或 无用户数据"
     },
+
     "evaluator": {
       "role": "验收工程师",
-      "capability_tags": ["verification", "testing", "bug-detection", "code-review", "quality-gate"],
-      "triggers": ["任何功能节点开发完成", "Bug修复后验证", "上线前最终检查"],
-      "exclusions": ["修改代码"],
-      "chain_position": "last",
+      "capability_tags": ["verification", "testing", "bug-detection", "code-review", "functionality-check", "quality-gate"],
+      "triggers": [
+        "任何功能节点开发完成",
+        "Bug修复后验证",
+        "上线前最终检查"
+      ],
+      "exclusions": ["修改代码", "视觉判断（交给reviewagent）"],
+      "priority": 99,
+      "chain_position": "last (功能验收)",
       "optional": false,
-      "skip_when": "永不跳过"
+      "skip_when": "永不跳过 — 每个功能节点必验收"
+    },
+
+    "reviewagent": {
+      "role": "视觉审查官",
+      "capability_tags": ["visual-review", "screenshot", "layout-check", "color-check", "animation-check", "responsive-check", "pixel-diff"],
+      "triggers": [
+        "前端页面/组件完成",
+        "动画实现完成",
+        "响应式布局完成",
+        "用户问'好不好看''效果怎样'"
+      ],
+      "exclusions": ["功能验收", "代码质量审查"],
+      "priority": 98,
+      "chain_position": "after frontend-builder, before final signoff",
+      "optional": true,
+      "skip_when": "纯后端任务 或 无视觉变化"
     }
   },
 
@@ -72,91 +156,198 @@
     {
       "id": "fuzzy-intent",
       "name": "意图模糊 — 先深挖再精化",
-      "keywords": ["不确定", "可能", "大概", "或许", "还没想好", "你觉得呢", "有什么建议"],
-      "agent_chain": ["追问深挖", "project-manager", "→ 按精化结果继续"]
+      "keywords": ["不确定", "可能", "大概", "或许", "还没想好", "你觉得呢", "有什么建议", "怎么做比较好", "不知道做什么"],
+      "agent_chain": ["grill-me(pre-skill)", "project-manager", "→ 按精化结果继续"],
+      "validation_level": "L2",
+      "note": "grill-me 不是 Agent 而是 skill，由超脑直接执行。产出 .grill/ 日志后喂给 project-manager。"
     },
     {
       "id": "new-frontend-page",
       "name": "新建纯前端页面",
-      "keywords": ["创建", "页面", "前端", "HTML", "网页", "展示", "动画"],
-      "exclude_keywords": ["API", "后端", "数据库", "登录"],
-      "agent_chain": ["project-manager?", "frontend-builder", "evaluator"]
+      "keywords": ["创建", "页面", "前端", "HTML", "网页", "展示", "动画", "响应式"],
+      "exclude_keywords": ["API", "后端", "数据库", "登录", "认证"],
+      "agent_chain": ["project-manager?", "frontend-builder", "reviewagent"],
+      "validation_level": "L2",
+      "note": "project-manager仅在需求模糊时触发"
     },
     {
       "id": "new-fullstack-feature",
       "name": "新建全栈功能",
       "keywords": ["API", "后端", "前端", "数据", "存储"],
-      "agent_chain": ["project-manager?", "architect", "backend-builder", "database-administrator?", "frontend-builder", "security-administrator?", "evaluator"]
+      "agent_chain": ["project-manager?", "architect", "backend-builder", "database-administrator?", "frontend-builder", "security-administrator?", "evaluator"],
+      "validation_level": "L3",
+      "note": "architect先做模块划分，backend-builder先出API再frontend-builder对接"
     },
     {
       "id": "modify-existing-ui",
-      "name": "修改已有页面",
-      "keywords": ["修改", "调整", "改样式", "换颜色", "布局"],
+      "name": "修改已有页面样式/布局",
+      "keywords": ["修改", "调整", "改样式", "换颜色", "布局", "响应式"],
       "exclude_keywords": ["新页面", "从零", "后端"],
-      "agent_chain": ["frontend-builder", "evaluator"]
+      "agent_chain": ["frontend-builder", "reviewagent?"],
+      "validation_level": "L1",
+      "note": "小改动走L1自检，大改动走L2+reviewagent"
     },
     {
       "id": "add-api-endpoint",
       "name": "新增API端点",
       "keywords": ["API", "端点", "接口", "路由", "后端"],
       "exclude_keywords": ["前端", "页面"],
-      "agent_chain": ["backend-builder", "security-administrator?", "evaluator"]
+      "agent_chain": ["backend-builder", "security-administrator?", "evaluator"],
+      "validation_level": "L2",
+      "note": "暴露新端点必走security检查"
+    },
+    {
+      "id": "database-design",
+      "name": "数据库设计/迁移",
+      "keywords": ["数据库", "表", "schema", "索引", "迁移", "存储"],
+      "agent_chain": ["architect?", "database-administrator"],
+      "validation_level": "L2",
+      "note": "复杂模型先architect评审再DBA设计"
+    },
+    {
+      "id": "security-audit",
+      "name": "安全审计",
+      "keywords": ["安全", "审计", "漏洞", "认证", "授权", "XSS", "CSRF"],
+      "agent_chain": ["security-administrator"],
+      "validation_level": "L2",
+      "note": "输出审计报告，不修改代码"
     },
     {
       "id": "bug-fix",
       "name": "Bug修复",
-      "keywords": ["bug", "修复", "报错", "不工作", "出错"],
+      "keywords": ["bug", "修复", "报错", "不工作", "出错", "问题"],
       "exclude_keywords": ["新功能", "添加"],
-      "agent_chain": ["evaluator(diagnose)", "→ 对应实现Agent", "evaluator(verify)"]
+      "agent_chain": ["evaluator(diagnose)", "→ 对应实现Agent", "evaluator(verify)"],
+      "validation_level": "L2",
+      "note": "先evaluator诊断定位，再派实现Agent修复，最后evaluator复验"
     },
     {
       "id": "refactoring",
       "name": "代码重构",
       "keywords": ["重构", "整理", "优化结构", "改架构"],
-      "agent_chain": ["architect", "→ 对应实现Agent", "evaluator"]
+      "agent_chain": ["architect", "→ 对应实现Agent", "evaluator"],
+      "validation_level": "L3",
+      "note": "architect先出重构方案再执行"
     },
     {
       "id": "new-project-init",
       "name": "新项目初始化",
       "keywords": ["创建项目", "新项目", "初始化", "从零开始"],
-      "agent_chain": ["project-manager", "architect", "→ 按需求派发实现Agent"]
+      "agent_chain": ["project-manager", "architect", "→ 按需求派发实现Agent"],
+      "validation_level": "L3",
+      "note": "project-manager输出requirement.md → architect输出architecture.md → 按需派发"
     },
     {
       "id": "animation-feature",
       "name": "动画/视觉效果",
       "keywords": ["动画", "动效", "过渡", "animation", "粒子", "特效"],
-      "agent_chain": ["frontend-builder", "evaluator"]
+      "exclude_keywords": ["后端", "API"],
+      "agent_chain": ["frontend-builder", "reviewagent"],
+      "validation_level": "L2",
+      "note": "动画必走reviewagent视觉审查"
     }
   ],
+
+  "pattern_matching_rules": {
+    "description": "当用户任务同时命中多个 task_patterns 时，按此算法确定优先级",
+    "scoring": {
+      "formula": "score = keyword_match_ratio * 100 + specificity_bonus",
+      "keyword_match_ratio": "命中关键词数 / pattern关键词总数",
+      "specificity_bonus": "关键词总数 * 5（更多关键词 = 更精确的匹配）",
+      "tie_breaker": "按 task_patterns 数组中的声明顺序（靠前优先）"
+    },
+    "exclusion_filter": "先过滤掉 exclude_keywords 命中的 pattern，再对剩余打分",
+    "multi_chain_merge": {
+      "strategy": "合并所有 chain 中的 Agent，去重，按 chain_ordering_rules 排序",
+      "conflict": "若合并后同一 Agent 在 pattern A 中标记 ? 但在 pattern B 中标记必选 → 以必选为准"
+    }
+  },
+
+  "decision_tree": {
+    "description": "当任务不匹配任何task_pattern时，按此决策树逐级判断",
+    "confirmation_gate": {
+      "description": "分发前确认制显式插入点 — 此步骤不可跳过",
+      "position": "Agent链初步确定后、派发执行前",
+      "rule": "超脑必须生成4选项（建议一/二/三 + 跳过精化），用户选择后才可继续派发",
+      "auto_skip_condition": "永不可自动跳过"
+    },
+    "steps": [
+      { "order": 1, "question": "意图是否模糊？→ 命中 fuzzy_intent_triggers？", "yes_action": "先 grill-me 深挖意图 → 再 project-manager", "no_action": "跳过" },
+      { "order": 2, "question": "需求是否模糊（<2句话、缺少技术细节）？", "yes_action": "派 project-manager 精化需求", "no_action": "跳过" },
+      { "order": 3, "question": "是否涉及用户可见的UI/页面/样式？", "yes_action": "frontend-builder 进入Agent链", "no_action": "跳过" },
+      { "order": 4, "question": "是否涉及后端逻辑/API/数据处理？", "yes_action": "backend-builder 进入Agent链", "no_action": "跳过" },
+      { "order": 5, "question": "是否新项目/多模块/需要技术选型？", "yes_action": "architect 进入Agent链", "no_action": "跳过" },
+      { "order": 6, "question": "是否涉及数据持久化/数据库设计？", "yes_action": "database-administrator 进入Agent链", "no_action": "跳过" },
+      { "order": 7, "question": "是否涉及用户认证/敏感数据/公网API？", "yes_action": "security-administrator 进入Agent链", "no_action": "跳过" },
+      { "order": 8, "question": "是否有UI变更需要视觉审查？", "yes_action": "reviewagent 进入Agent链", "no_action": "跳过" },
+      { "order": 9, "question": "是否功能节点开发完成？", "yes_action": "evaluator 进入Agent链（作为最后一个节点）", "no_action": "跳过" }
+    ]
+  },
 
   "chain_ordering_rules": {
     "order": [
       "project-manager (if triggered)",
       "architect (if triggered)",
-      "backend-builder",
-      "database-administrator (alongside backend)",
-      "frontend-builder",
-      "security-administrator (if triggered)",
+      "backend-builder (runs before frontend — API first)",
+      "database-administrator (alongside backend-builder)",
+      "frontend-builder (after backend — consumes API)",
+      "security-administrator (after implementation, before evaluator)",
+      "reviewagent (after frontend-builder for visual tasks)",
       "evaluator (always last)"
     ],
     "parallel_allowed": [
       ["database-administrator", "backend-builder"],
-      ["security-administrator", "frontend-builder"]
+      ["security-administrator", "reviewagent"]
     ]
   },
 
   "failure_handling": {
     "max_retries_per_agent": 3,
-    "on_timeout": "重试2次（30s→60s间隔），仍失败→跳过可选Agent，暂停必选Agent链",
-    "on_unclear": "若project-manager未运行→插入project-manager精化后重派；若已运行→通知用户补充",
-    "escalation": "超限→报告已完成/失败/建议下一步"
+    "pre_retry_gate": {
+      "description": "重试闸门 — Agent 第 2 次重试前强制执行经验检索，防止埋头钻死胡同",
+      "trigger": "同一 Agent 同一任务节点即将执行第 2 次重试",
+      "action": [
+        "1. 从当前错误信息和任务描述中提取 3-5 个关键词",
+        "2. Grep 搜索三层经验文件（brain-memory + Agent经验 + 项目分支记忆）",
+        "3. 命中 → 将经验注入当前决策上下文，调整方案后再重试",
+        "4. 未命中 → 继续重试，但完成后若用户介入解决则触发写回"
+      ]
+    },
+    "scenarios": {
+      "agent_timeout_or_unavailable": {
+        "action": "重试最多2次（间隔递增：30s → 60s），仍失败 → 从链中移除可选Agent；必选Agent则暂停整条链并通知用户"
+      },
+      "agent_returns_unclear": {
+        "action": "若 project-manager 未运行 → 插入 project-manager 精化需求后重派；若已运行 → 通知用户补充需求"
+      },
+      "agent_returns_error": {
+        "action": "超脑分析错误类型：环境问题 → 修复后重试；逻辑问题 → 派 architect 评估；实现问题 → 同一Agent重试1次。重试前必须走 pre_retry_gate"
+      }
+    },
+    "escalation": {
+      "action": "暂停任务，向用户报告：已完成步骤、失败步骤、失败原因、建议下一步"
+    }
   },
 
-  "safety_guards": [
-    "circular_dependency_check: 检测Agent链循环依赖",
-    "empty_chain_check: 空链默认派project-manager",
-    "evaluator_position_check: evaluator始终在链尾"
-  ],
+  "conflict_resolution": {
+    "rules": [
+      { "scenario": "frontend vs backend (全栈)", "resolution": "先backend出API，再frontend对接", "priority": "backend first" },
+      { "scenario": "evaluator vs security", "resolution": "security做方案设计，evaluator做运行时验证。互补不冲突", "priority": "security first, evaluator last" },
+      { "scenario": "architect vs project-manager", "resolution": "project-manager管What，architect管How。先pm后arch", "priority": "pm first" },
+      { "scenario": "reviewagent vs evaluator (前端)", "resolution": "reviewagent管视觉，evaluator管功能。前端节点两者都要走", "priority": "evaluator first (功能), reviewagent second (视觉)" },
+      { "scenario": "DBA vs backend (数据层)", "resolution": "DBA出schema/方案，backend按方案实现", "priority": "DBA first" }
+    ]
+  },
+
+  "safety_guards": {
+    "checks": [
+      { "name": "circular_dependency_check", "description": "检测Agent链循环依赖" },
+      { "name": "all_excluded_check", "description": "检测是否所有Agent都被排除", "on_detected": "默认派发 project-manager 做需求澄清" },
+      { "name": "parallel_vs_strict_order_conflict", "description": "chain_ordering_rules 优先于 parallel_allowed" },
+      { "name": "empty_chain_check", "description": "空链默认派 project-manager" },
+      { "name": "evaluator_position_check", "description": "确保 evaluator 始终在链尾" }
+    ]
+  },
 
   "dispatch_log": []
 }

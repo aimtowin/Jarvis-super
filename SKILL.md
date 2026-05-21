@@ -11,16 +11,42 @@ description: 高性能低开销项目生成与管理中枢——用于创建其�
 
 ## 首次激活 — 自举
 
+### Step 0: 确保全局引导存在
+
+检查 `~/.claude/CLAUDE.md`。若不存在，创建：
+
+```markdown
+# Claude Code 全局引导
+
+## Jarvis 项目中枢
+
+~/.jarvis/ 是本机的项目生成与管理中枢。通过自然语言描述需求即可激活 Jarvis Skill。
+
+## 快捷指令
+
+- "创建/开始/做/搞 项目" → 激活 Jarvis 项目管理中枢
+- "调用 XX 项目" → 路由到已有项目
+- "/审视" 或 "#审视" → 对最近决策做独立核验
+- "/exp" 或 "查经验" → 卡住时强制检索三层经验
+- "grill me" → 深度追问模糊意图
+```
+
+此文件是记忆架构的入口。没有它，Claude Code 无法持久感知 Jarvis 的存在。安装脚本 (`install.js`) 会自动创建此文件，但若用户通过手动安装，需自行创建。
+
+### Step 1: 检查数据目录
+
 检查 `~/.jarvis/` 是否存在。不存在则创建：
 
 ```
 ~/.jarvis/
 ├── memory/
 │   ├── MEMORY.md              ← 全局记忆索引
-│   └── user_preferences.md    ← 用户画像模板
+│   ├── user_preferences.md    ← 用户画像
+│   └── brain-memory.md        ← 超脑全局经验（无限积累）
 ├── agents/
 │   ├── index.json             ← Agent 注册表
-│   └── dispatch-rules.json    ← 调度规则引擎
+│   ├── dispatch-rules.json    ← 调度规则引擎
+│   └── <name>/memory/MEMORY.md  ← L2 Agent 跨项目经验
 └── projects/
     └── index.json             ← 项目索引
 ```
@@ -29,8 +55,10 @@ description: 高性能低开销项目生成与管理中枢——用于创建其�
 ```markdown
 # 用户画像
 - 称呼：（待填充）
-- 技术栈：（待填充）
-- 沟通偏好：直接简洁
+- 教育/职业：（待填充）
+- 核心技术方向：（待填充）
+- 编程语言水平：（待填充）
+- 沟通偏好：直接简洁，中文为主
 - 工作习惯：（待填充）
 ```
 
@@ -80,8 +108,8 @@ Agent 完成后只返回结果摘要（代码 diff、验收结论、产出物路
 
 | 层级 | 位置 | 内容 | 读写规则 |
 |------|------|------|---------|
-| L1 全局 | `~/.jarvis/memory/` | 用户画像、全局规则 | 新信息立即写入，每次对话必读 |
-| L2 Agent | `~/.jarvis/agents/<name>/memory/MEMORY.md` | 跨项目可复用经验 | 节点完成后按7问清单写回，派发前取最近5条注入 |
+| L1 全局 | `~/.jarvis/memory/` | 用户画像、全局规则、超脑经验 | 新信息立即写入，每次对话必读 |
+| L2 Agent | `~/.jarvis/agents/<name>/memory/MEMORY.md` | 跨项目可复用经验 | 节点完成后按7问清单写回，派发前关键词Grep取最相关5条注入 |
 | L3 项目 | `~/.jarvis/projects/<name>/agents/<agent-name>.md` | 项目分支决策/约束/关键修改 | 架构决策、关键文件修改时写回 |
 
 ### 记忆注入格式（派发 Agent 前拼入 prompt 头部）
@@ -105,6 +133,7 @@ L2 写入条件（任一命中即写）：
 - 遇到异常错误模式（标记 ⚠️）
 - 用户明确肯定/否定反馈
 - 观察到性能瓶颈/优化机会
+- 进度长时间卡在同一问题，靠用户二次输入快速解决 → 同时写入 brain-memory.md
 
 L3 写入条件（任一命中即写）：
 - 做出项目级架构决策
@@ -128,6 +157,16 @@ L3 写入条件（任一命中即写）：
 
 - 每文件 ≤10 条。注入取最近 5 条。
 - 触顶压缩：淘汰过期 → 按天数×权重评分（⚠️标记×0，具体复用条件×0.5，一般×1，无复用条件×2）→ 从最高分删，一次最多3条。
+
+### 自动经验检索（/exp 刹车机制）
+
+当超脑在同一问题上反复卡住时，用户可用 `/exp` 或 `查经验` 命令强制中断当前方向。超脑接到此命令后：
+1. 立即停止当前尝试的方案
+2. 从当前问题/错误中提取 3-5 个关键词
+3. 同时 Grep 三层经验：brain-memory.md + Agent 经验 + 项目分支记忆
+4. 报告命中/未命中，基于经验提出新方向
+
+此外，Agent 第 2 次重试前也会自动触发经验检索（pre_retry_gate），防止盲目重试。
 
 ---
 
@@ -185,19 +224,21 @@ L3 写入条件（任一命中即写）：
 | database-administrator | 数据库管理员 | 数据持久化/表设计/迁移/缓存 | 是 |
 | frontend-builder | 前端构建师 | UI/页面/样式/动画/响应式 | 纯后端时跳过 |
 | security-administrator | 安全管理员 | 认证/授权/公网API/敏感数据 | 是 |
+| reviewagent | 视觉审查官 | 前端页面/动画/响应式完成、用户问好不好看 | 纯后端时跳过 |
 | evaluator | 验收工程师 | 每个功能节点完成后 | **否（必选）** |
 
 ### 执行顺序
 
-project-manager(?) → architect(?) → backend-builder → database-administrator(?) → frontend-builder → security-administrator(?) → evaluator
+project-manager(?) → architect(?) → backend-builder → database-administrator(?) → frontend-builder → security-administrator(?) → reviewagent(?) → evaluator
 
-并行允许：[database-administrator, backend-builder]、[security-administrator, frontend-builder]
+并行允许：[database-administrator, backend-builder]、[security-administrator, reviewagent]
 
 ### 派发约束
 
 - `?` 标记 Agent 仅在触发条件满足时加入，否则跳过
 - evaluator 永不跳过，始终在链尾
 - 最大重试：每 Agent 3 次，超限升级用户
+- 第 2 次重试前强制走 pre_retry_gate（Grep 三层经验再决策）
 - chain_ordering_rules 优先于 parallel_allowed
 
 ---
@@ -218,7 +259,7 @@ project-manager(?) → architect(?) → backend-builder → database-administrat
 | 等级 | 方式 | 适用 |
 |------|------|------|
 | L1 自检 | 类型检查/lint/构建 | 单文件修改、模板化页面、配置变更 |
-| L2 标准 | Agent 自检 + 代码审查 | 多文件改动、新组件、逻辑变更 |
+| L2 标准 | 代码审查 | 多文件改动、新组件、逻辑变更 |
 | L3 深度 | L2 + 外部模型交叉验证 | 视觉/交互/安全、首次交付 |
 
 同一节点最多 3 轮验证，不通过则标记"需人工介入"并通知用户。
@@ -227,7 +268,10 @@ project-manager(?) → architect(?) → backend-builder → database-administrat
 
 ## 验收机制
 
-每个功能节点完成后必须验收。默认由 Agent 做 L1/L2 自检。
+每个功能节点完成后必须验收。
+
+**功能验收** → evaluator（代码审查、Bug检测、功能正确性）
+**视觉审查** → reviewagent（布局/色彩/动效/响应式，替代超脑目视判断）
 
 **推荐：配置外部模型做交叉验证**，避免同模型自评失真。首次运行时提示：
 
@@ -253,6 +297,7 @@ Jarvis 支持配置外部验证模型来交叉检查产出质量。
 | "调用 XX 项目" | 读索引 → 加载项目 CLAUDE.md + 分支记忆 → 就绪 |
 | "上传" / "部署" / "推送" | 直接执行 Git commit → pull merge → push |
 | "#审视" 或 "/审视" | 对上一轮决策/产出做独立核验 |
+| "/exp" 或 "查经验" | 强制中断当前方向，Grep 三层经验文件查相关记录 |
 | "grill me" | 对模糊意图进行深度追问 |
 
 ---
@@ -293,5 +338,19 @@ Jarvis 越用越好用的机制：
 2. **Agent 经验沉淀**：完成任务 → 7 问清单 → 写入 L2 跨项目经验 → 下次同类任务直接命中
 3. **项目记忆接力**：关键决策写入 L3 → 新会话加载项目时完整恢复上下文
 4. **调度模式优化**：新的任务→Agent链组合 → 追加到 dispatch-rules.json → 下次自动命中
+5. **全局经验刹车**：brain-memory.md 记录每次卡顿突破 → `/exp` 命令随时检索
 
 用户不需要手动维护任何记忆文件，Jarvis 自动判断写入时机。
+
+---
+
+## 记忆架构自举保证
+
+为确保新用户在任何环境下都能正常初始化记忆体系，遵循以下启动顺序：
+
+1. **安装时**（install.js）：创建 `~/.claude/CLAUDE.md`（全局引导入口）+ `~/.jarvis/`（完整模板）+ 8 个 Agent 的 L2 记忆目录
+2. **首次激活时**（本 SKILL.md）：若 `~/.claude/CLAUDE.md` 不存在 → 自动创建（兜底）
+3. **首次对话时**：若 `user_preferences.md` 含"待填充" → 主动访谈采像
+4. **每次派发 Agent 前**：若对应 L2/L3 记忆文件不存在 → 自动创建种子文件
+
+这套机制保证：即使用户从零开始、没有任何 Claude Code 配置文件，Jarvis 也能完整初始化并正常运行。

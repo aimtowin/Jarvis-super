@@ -1,6 +1,6 @@
 {
   "name": "jarvis-claude",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "高性能低开销项目生成与管理中枢 — Claude Code Skill。子Agent上下文隔离，三层记忆体系，用于创建其它工具的工具。",
   "main": "install.js",
   "bin": {

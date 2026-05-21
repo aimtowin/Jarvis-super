@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "agents": [
     {
       "name": "project-manager",
@@ -19,7 +19,7 @@
       "name": "backend-builder",
       "role": "后端构建师",
       "created": "auto",
-      "description": "构建后端服务，API开发，数据处理，文件操作",
+      "description": "构建后端服务，API开发，数据处理，FFmpeg视频合成，文件操作",
       "status": "active"
     },
     {
@@ -47,7 +47,14 @@
       "name": "evaluator",
       "role": "验收工程师",
       "created": "auto",
-      "description": "功能验收、Bug检测、代码审查、质量把关",
+      "description": "功能验收、Bug检测、代码审查、质量把关。支持配置外部模型做交叉验证",
+      "status": "active"
+    },
+    {
+      "name": "reviewagent",
+      "role": "视觉审查官",
+      "created": "auto",
+      "description": "视觉还原度审查：浏览器截图 → 分析布局/色彩/动效/响应式，替代超脑目视判断",
       "status": "active"
     }
   ],
